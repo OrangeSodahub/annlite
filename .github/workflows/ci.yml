@@ -70,65 +70,6 @@ jobs:
         with:
           path: dist/*.tar.gz
 
-  core-test:
-    needs: [prep-testbed, build-wheels, build-sdist]
-    runs-on: ${{ matrix.os }}
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [ubuntu-latest, windows-latest]
-        python-version: [3.7]
-        test-path: ${{fromJson(needs.prep-testbed.outputs.matrix)}}
-    steps:
-      - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v3
-        with:
-          python-version: ${{ matrix.python-version }}
-      - uses: actions/checkout@v3
-      - uses: actions/download-artifact@v3
-        with:
-          name: artifact
-          path: dist
-      - name: Prepare enviroment
-        run: |
-          python -m pip install --upgrade pip
-          pip install jina
-          pip install cibuildwheel
-          pip install --pre docarray
-          pip install pytest pytest-html pytest-cov pytest-mock pytest-repeat pytest-custom-exit-code pytest-timeout pytest-reraise
-      - name: Install annlite unix
-        if: ${{ matrix.os == 'ubuntu-latest' }}
-        run: |
-          pip install dist/*linux*.whl
-      - name: Install annlite win
-        if: ${{ matrix.os == 'windows-latest'}}
-        run: |
-          pip install --find-links=dist/ annlite
-      - name: Test unix
-        id: test_unix
-        if: ${{ matrix.os == 'ubuntu-latest' || matrix.os == 'macos-latest' }}
-        env:
-          OPENBLAS_CORETYPE: ARMV8
-        run: |
-          cd ..
-          mv annlite/tests/ ./
-          pytest --suppress-no-test-exit-code --cov=annlite --cov-report=xml \
-          -v -s -m "not gpu" ${{ matrix.test-path }}
-          echo "::set-output name=codecov_flag::annlite"
-        timeout-minutes: 30
-      - name: Test win
-        id: test_win
-        if: ${{ matrix.os == 'windows-latest'}}
-        env:
-          PYTHONIOENCODING: 'utf-8'
-        run: |
-          cd ..
-          move annlite/tests/ ./
-          cd tests/
-          pytest -v -s -m "not gpu" -k "test"
-          echo "::set-output name=codecov_flag::annlite"
-        timeout-minutes: 30
-
   prerelease:
     needs: [core-test]
     runs-on: ubuntu-latest
@@ -136,10 +77,10 @@ jobs:
       - uses: actions/checkout@v3
         with:
           fetch-depth: 100
-#      - uses: actions/download-artifact@v3
-#        with:
-#          name: artifact
-#          path: dist
+     - uses: actions/download-artifact@v3
+       with:
+         name: artifact
+         path: dist
       - name: Pre-release (.devN)
         run: |
           git fetch --depth=1 origin +refs/tags/*:refs/tags/*
