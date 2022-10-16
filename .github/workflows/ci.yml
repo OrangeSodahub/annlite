@@ -201,16 +201,22 @@ jobs:
           fail_ci_if_error: false
           token: ${{ secrets.CODECOV_TOKEN }} # not required for public repos
 
-  # just for blocking the merge until all parallel core-test are successful
-  success-all-test:
+  prerelease:
     needs: [core-test]
-    if: always()
     runs-on: ubuntu-latest
     steps:
-      - uses: technote-space/workflow-conclusion-action@v2
-      - name: Check Failure
-        if: env.WORKFLOW_CONCLUSION == 'failure'
-        run: exit 1
-      - name: Success
-        if: ${{ success() }}
-        run: echo "All Done"
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 100
+#      - uses: actions/download-artifact@v3
+#        with:
+#          name: artifact
+#          path: dist
+      - name: Pre-release (.devN)
+        run: |
+          git fetch --depth=1 origin +refs/tags/*:refs/tags/*
+          pip install twine wheel build
+          ./scripts/release.sh
+        env:
+          TWINE_USERNAME: ${{ secrets.TWINE_USERNAME }}
+          TWINE_PASSWORD: ${{ secrets.TWINE_PASSWORD }}
