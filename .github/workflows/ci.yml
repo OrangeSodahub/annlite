@@ -70,17 +70,32 @@ jobs:
         with:
           path: dist/*.tar.gz
 
+  core-test:
+    needs: [prep-testbed, build-wheels, build-sdist]
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        python-version: [3.7]
+        test-path: ${{fromJson(needs.prep-testbed.outputs.matrix)}}
+    steps:
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v3
+        with:
+          python-version: ${{ matrix.python-version }}
+          
   prerelease:
-    needs: [build-wheels]
+    needs: [core-test]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
         with:
           fetch-depth: 100
-     - uses: actions/download-artifact@v3
-       with:
-         name: artifact
-         path: dist
+#      - uses: actions/download-artifact@v3
+#        with:
+#          name: artifact
+#          path: dist
       - name: Pre-release (.devN)
         run: |
           git fetch --depth=1 origin +refs/tags/*:refs/tags/*
